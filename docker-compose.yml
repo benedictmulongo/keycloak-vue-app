@@ -1,0 +1,67 @@
+version: '3'
+services:
+  keycloak-server:
+    # build: ./keycloak-data
+    build:
+        context: ./keycloak-data
+        args:
+          - HEALTH_ENABLED=${KEYCLAOK_HEALTH_ENABLED}
+          - METRICS_ENABLED=${KEYCLAOK_METRICS_ENABLED}
+          - FEATURES=${KEYCLAOK_FEATURES}
+          - DB_NAME=${POSTGRES_DB_DEFAULT}
+          - DB_USERNAME=${POSTGRES_USER}
+          - DB_PASSWORD=${POSTGRES_PASSWORD}
+          - DB_HOSTNAME=${POSTGRES_DB_CONTAINER_NAME}
+          - KEYCLOAK_HOSTNAME=${KEYCLOAK_HOSTNAME}
+          - DB_PORT=${POSTGRES_DB_PORT_INTERN}
+          - DBMS=${DB_DBMS}
+    environment:
+      - HEALTH_ENABLED=${KEYCLAOK_HEALTH_ENABLED}
+      - METRICS_ENABLED=${KEYCLAOK_METRICS_ENABLED}
+      - FEATURES=${KEYCLAOK_FEATURES}
+      - DB_NAME=${POSTGRES_DB_DEFAULT}
+      - DB_USERNAME=${POSTGRES_USER}
+      - DB_PASSWORD=${POSTGRES_PASSWORD}
+      - DB_HOSTNAME=${POSTGRES_HOSTNAME}
+      - DB_PORT=${POSTGRES_DB_PORT_EXTERN}
+      - DBMS=${DB_DBMS}
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - PROXY_ADDRESS_FORWARDING=${PROXY_ADDRESS_FORWARDING}
+    ports:
+      - "8443:8443"
+    # restart: on-failure
+    depends_on:
+      - db
+      - pgadmin
+    # command: start --optimized
+    command: start-dev
+    #volumes:
+    #  - ./keycloak:/opt/keycloak/conf
+  db:
+    image: postgres:14
+    ports:
+      - "${POSTGRES_DB_PORT_EXTERN}:5432"
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - ./database/model/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./database/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  pgadmin:
+    # To connect: use -> host=db, username={POSTGRES_USER}=postgres, paword={POSTGRES_PASSWORD}=mVgHHAB86NuTJp
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      - PGADMIN_LISTEN_PORT=${PGADMIN_LISTEN_PORT}
+    ports:
+      - "8089:80"
+    depends_on:
+      - db
